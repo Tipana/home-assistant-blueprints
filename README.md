@@ -41,8 +41,6 @@ Here’s what a simple `input_select` dropdown looks like in Lovelace:
 
 ![Example Input Select](https://raw.githubusercontent.com/Tipana/home-assistant-blueprints/main/images/input_select_example.png)
 
-*(Replace this with your own screenshot by adding it to an `images/` folder in the repo.)*
-
 ---
 
 ## 🖥 Optional Debug Cards

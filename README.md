@@ -1,10 +1,6 @@
 # Home Assistant Blueprints by Tipana
 
-[![Import Blueprint in Home Assistant](https://img.shields.io/badge/Import%20in-Home%20Assistant-41BDF5?logo=home-assistant&logoColor=white)](https://raw.githubusercontent.com/Tipana/home-assistant-blueprints/main/blueprints/automation/tipana/ir_keypad_z2m_generic.yaml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/Tipana/home-assistant-blueprints/blob/main/LICENSE)
-
 ## IR Keypad → Zigbee2MQTT (Generic, with examples inside Blueprint)
-
 
 This blueprint lets you control **any IR device** (fan, heater, TV, AC, etc.) via an `input_select` and a Zigbee2MQTT IR blaster — using your own labels.
 
@@ -40,6 +36,8 @@ https://raw.githubusercontent.com/Tipana/home-assistant-blueprints/main/blueprin
 Here’s what a simple `input_select` dropdown looks like in Lovelace:
 
 ![Example Input Select](https://raw.githubusercontent.com/Tipana/home-assistant-blueprints/main/images/input_select_example.png)
+
+*(Replace this with your own screenshot by adding it to an `images/` folder in the repo.)*
 
 ---
 
@@ -79,7 +77,7 @@ cards:
     hours_to_show: 4
 ```
 
- 
+📸 Screenshot placeholder:  
 ![Fan Debug Card](https://raw.githubusercontent.com/Tipana/home-assistant-blueprints/main/images/fan_debug_card.png)
 
 ---
@@ -110,7 +108,7 @@ cards:
     hours_to_show: 4
 ```
 
-
+📸 Screenshot placeholder:  
 ![Heater Debug Card](https://raw.githubusercontent.com/Tipana/home-assistant-blueprints/main/images/heater_debug_card.png)
 
 ---

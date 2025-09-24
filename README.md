@@ -110,8 +110,8 @@ cards:
     hours_to_show: 4
 ```
 
-📸 
-(https://raw.githubusercontent.com/Tipana/home-assistant-blueprints/main/images/heater_debug_card.png)
+
+![Heater Debug Card](https://raw.githubusercontent.com/Tipana/home-assistant-blueprints/main/images/heater_debug_card.png)
 
 ---
 

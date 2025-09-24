@@ -1,11 +1,15 @@
 blueprint:
   name: IR Keypad → Zigbee2MQTT (Generic labels, optional energy monitoring)
   description: >
-    Control ANY IR device via an input_select + Zigbee2MQTT using YOUR labels.
-    Map your exact option text → base64 IR codes (JSON). Optional energy monitoring or a helper boolean for power state.
+    Control ANY IR device via an input_select and a Zigbee2MQTT IR blaster using YOUR labels.
+    • Map your exact input_select option text → base64 IR codes (JSON).
+    • Power can use one toggle code (same payload for On/Off) OR distinct ON/OFF codes.
+    • Optional energy sensor (W) = real power state; else optional helper boolean.
+    • After non-power actions, the selector snaps back to your “Power-On label” (guard optional to prevent loops).
   domain: automation
   author: Tipana
   source_url: https://github.com/Tipana/home-assistant-blueprints/blob/main/blueprints/automation/tipana/ir_keypad_z2m_generic.yaml
+
   input:
     select_entity:
       name: Keypad input_select
@@ -16,17 +20,17 @@ blueprint:
 
     mqtt_topic:
       name: Zigbee2MQTT command topic
-      description: Example:: zigbee2mqtt/IR_Blaster_Parents_Bedroom/set
+      description: Example: zigbee2mqtt/IR_Blaster_Parents_Bedroom/set
       selector: { text: {} }
 
-    # --- POWER LABELS (these must match options in your input_select) ---
+    # --- POWER LABELS (must match options in your input_select) ---
     power_on_label:
-      name: Label used for "Power On"
+      name: Label for "Power On"
       description: Exact text of your "on" option (e.g., On / Power / Start).
       default: "On"
       selector: { text: {} }
     power_off_label:
-      name: Label used for "Power Off"
+      name: Label for "Power Off"
       description: Exact text of your "off" option (e.g., Off / Power Off / Stop).
       default: "Off"
       selector: { text: {} }
@@ -58,7 +62,7 @@ blueprint:
     actions_map_json:
       name: Non-power actions map (JSON)
       description: >
-        JSON object mapping your other labels → base64 IR codes.
+        JSON mapping your other labels → base64 IR codes.
         Keys MUST exactly match your input_select option text (case/spacing).
         Example:
         {
@@ -121,7 +125,7 @@ variables:
   v_code_on:      !input power_code_on
   v_code_off:     !input power_code_off
 
-  v_actions_map: !input actions_map_json   # This is already an object in HA UI; treat as dict.
+  v_actions_map: !input actions_map_json
 
   v_energy: !input energy_sensor
   v_on_watts: !input on_watts

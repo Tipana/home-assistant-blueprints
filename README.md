@@ -79,8 +79,8 @@ cards:
     hours_to_show: 4
 ```
 
-📸  
-(https://raw.githubusercontent.com/Tipana/home-assistant-blueprints/main/images/fan_debug_card.png)
+ 
+![Fan Debug Card](https://raw.githubusercontent.com/Tipana/home-assistant-blueprints/main/images/fan_debug_card.png)
 
 ---
 

@@ -1,0 +1,227 @@
+blueprint:
+  name: IR Keypad → Zigbee2MQTT (Generic labels, optional energy monitoring)
+  description: >
+    Control ANY IR device via an input_select + Zigbee2MQTT using YOUR labels.
+    Map your exact option text → base64 IR codes (JSON). Optional energy monitoring or a helper boolean for power state.
+  domain: automation
+  author: Tipana
+  source_url: https://github.com/Tipana/home-assistant-blueprints/blob/main/blueprints/automation/tipana/ir_keypad_z2m_generic.yaml
+  input:
+    select_entity:
+      name: Keypad input_select
+      description: The dropdown you click (its options are your actual button labels).
+      selector:
+        entity:
+          domain: input_select
+
+    mqtt_topic:
+      name: Zigbee2MQTT command topic
+      description: Example:: zigbee2mqtt/IR_Blaster_Parents_Bedroom/set
+      selector: { text: {} }
+
+    # --- POWER LABELS (these must match options in your input_select) ---
+    power_on_label:
+      name: Label used for "Power On"
+      description: Exact text of your "on" option (e.g., On / Power / Start).
+      default: "On"
+      selector: { text: {} }
+    power_off_label:
+      name: Label used for "Power Off"
+      description: Exact text of your "off" option (e.g., Off / Power Off / Stop).
+      default: "Off"
+      selector: { text: {} }
+
+    # --- POWER CODES (pick ONE style) ---
+    use_distinct_power_codes:
+      name: Use distinct ON/OFF power codes?
+      description: Turn on if your device needs different IR payloads for ON vs OFF. Leave off for a single toggle code.
+      default: false
+      selector:
+        boolean: {}
+
+    power_code_toggle:
+      name: POWER (toggle) base64
+      description: If NOT using distinct codes, paste the one toggle payload here.
+      default: ""
+      selector: { text: {} }
+
+    power_code_on:
+      name: (Distinct mode) POWER ON base64
+      default: ""
+      selector: { text: {} }
+    power_code_off:
+      name: (Distinct mode) POWER OFF base64
+      default: ""
+      selector: { text: {} }
+
+    # --- NON-POWER ACTIONS MAP ---
+    actions_map_json:
+      name: Non-power actions map (JSON)
+      description: >
+        JSON object mapping your other labels → base64 IR codes.
+        Keys MUST exactly match your input_select option text (case/spacing).
+        Example:
+        {
+          "Speed Up": "xxxx",
+          "Speed Down": "yyyy",
+          "Swing Up": "zzzz",
+          "Left": "....",
+          "Timer": "...."
+        }
+      default: "{}"
+      selector:
+        object: {}
+
+    # --- STATE DETECTION (energy sensor preferred, else helper) ---
+    energy_sensor:
+      name: (Optional) Energy sensor (W)
+      description: Smart plug reporting watts. If set, used to infer real on/off.
+      default: ""
+      selector:
+        entity:
+          domain: sensor
+    on_watts:
+      name: (Optional) ON threshold (W)
+      description: Consider device ON when watts > threshold (used only with energy_sensor).
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 3000
+          step: 1
+          unit_of_measurement: W
+
+    power_helper:
+      name: (Optional) Power helper boolean
+      description: input_boolean mirror of the device power state (fallback when no energy sensor).
+      default: ""
+      selector:
+        entity:
+          domain: input_boolean
+
+    guard_boolean:
+      name: (Optional) UI reset guard boolean
+      description: input_boolean to suppress this automation while snapping the dropdown back to "On".
+      default: ""
+      selector:
+        entity:
+          domain: input_boolean
+
+mode: restart
+
+variables:
+  v_select: !input select_entity
+  v_topic: !input mqtt_topic
+
+  v_label_on: !input power_on_label
+  v_label_off: !input power_off_label
+
+  v_use_distinct: !input use_distinct_power_codes
+  v_code_toggle:  !input power_code_toggle
+  v_code_on:      !input power_code_on
+  v_code_off:     !input power_code_off
+
+  v_actions_map: !input actions_map_json   # This is already an object in HA UI; treat as dict.
+
+  v_energy: !input energy_sensor
+  v_on_watts: !input on_watts
+  v_helper: !input power_helper
+  v_guard: !input guard_boolean
+
+trigger:
+  - platform: state
+    entity_id: !input select_entity
+
+condition: []
+
+action:
+  - variables:
+      picked: "{{ trigger.to_state.state }}"
+      is_power_on_label:  "{{ picked == v_label_on }}"
+      is_power_off_label: "{{ picked == v_label_off }}"
+      is_power_key: "{{ is_power_on_label or is_power_off_label }}"
+
+      # Real power state (True/False/unknown)
+      power_on: >-
+        {% if v_energy %}
+          {% set w = states(v_energy) | float(0) %}
+          {{ w > (v_on_watts | float(0)) }}
+        {% elif v_helper %}
+          {{ is_state(v_helper, 'on') }}
+        {% else %}
+          unknown
+        {% endif %}
+
+      # Decide if we should send a power command (prevents wrong-way toggles)
+      should_send: >-
+        {% if is_power_on_label %}
+          {% if v_use_distinct %}true{% else %}
+          {%   if power_on in [false] %}true{% elif power_on in [true] %}false{% else %}true{% endif %}
+          {% endif %}
+        {% elif is_power_off_label %}
+          {% if v_use_distinct %}true{% else %}
+          {%   if power_on in [true] %}true{% elif power_on in [false] %}false{% else %}true{% endif %}
+          {% endif %}
+        {% else %}
+          true
+        {% endif %}
+
+      # Pick the IR code for this selection
+      chosen_code: >-
+        {% if is_power_key and v_use_distinct %}
+          {% if is_power_on_label %}{{ v_code_on }}{% else %}{{ v_code_off }}{% endif %}
+        {% elif is_power_key %}
+          {{ v_code_toggle }}
+        {% else %}
+          {{ v_actions_map.get(picked, '') }}
+        {% endif %}
+
+  # Require a code for this selection
+  - condition: template
+    value_template: "{{ (chosen_code | default('')) | string | length > 0 }}"
+
+  # Only send if needed (for power keys); non-power always allowed
+  - condition: template
+    value_template: "{{ should_send | bool }}"
+
+  # Publish to Zigbee2MQTT (send the IR)
+  - service: mqtt.publish
+    data:
+      topic: "{{ v_topic }}"
+      payload: >-
+        {"ir_code_to_send":"{{ chosen_code }}"}
+
+  # Keep helper in sync (if provided)
+  - choose:
+      - conditions: "{{ v_helper != '' and is_power_on_label }}"
+        sequence:
+          - service: input_boolean.turn_on
+            target: { entity_id: "{{ v_helper }}" }
+      - conditions: "{{ v_helper != '' and is_power_off_label }}"
+        sequence:
+          - service: input_boolean.turn_off
+            target: { entity_id: "{{ v_helper }}" }
+
+  # Snap back to "On" label for non-power selections (optional guard)
+  - choose:
+      - conditions: "{{ (not is_power_key) and picked != v_label_on }}"
+        sequence:
+          - choose:
+              - conditions: "{{ v_guard != '' }}"
+                sequence:
+                  - service: input_boolean.turn_on
+                    target: { entity_id: "{{ v_guard }}" }
+                  - delay: "00:00:01"
+                  - service: input_select.select_option
+                    data:
+                      entity_id: "{{ v_select }}"
+                      option: "{{ v_label_on }}"
+                  - delay: "00:00:01"
+                  - service: input_boolean.turn_off
+                    target: { entity_id: "{{ v_guard }}" }
+            default:
+              - delay: "00:00:01"
+              - service: input_select.select_option
+                data:
+                  entity_id: "{{ v_select }}"
+                  option: "{{ v_label_on }}"
